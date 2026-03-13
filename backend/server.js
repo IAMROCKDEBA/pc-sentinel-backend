@@ -130,8 +130,27 @@ function requireJWT(req, res, next) {
 }
 
 function requireApiKey(req, res, next) {
-  const key = req.headers['x-api-key'];
-  if (key !== process.env.HEARTBEAT_API_KEY) return res.status(403).json({ error: 'Forbidden' });
+  const expectedKey = process.env.HEARTBEAT_API_KEY;
+  const auth = req.headers.authorization;
+  const bearer = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  const key =
+    req.headers['x-api-key'] ||
+    req.headers['api-key'] ||
+    bearer ||
+    req.query.apiKey ||
+    req.query.key ||
+    req.query.token ||
+    req.body?.apiKey ||
+    req.body?.key ||
+    req.body?.token;
+
+  if (!expectedKey) {
+    return res.status(500).json({ error: 'Server misconfigured: HEARTBEAT_API_KEY is missing' });
+  }
+
+  if (String(key) !== String(expectedKey)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   next();
 }
 
@@ -168,8 +187,10 @@ function handleHeartbeat(req, res) {
   res.json({ ok: true, timestamp: now, threshold: OFFLINE_THRESHOLD / 1000 });
 }
 
-app.post('/heartbeat', requireApiKey, handleHeartbeat);
-app.post('/api/heartbeat', requireApiKey, handleHeartbeat);
+// Support both GET and POST because some heartbeat clients (PowerShell/curl)
+// are commonly configured with query params and GET probes in production.
+app.all('/heartbeat', requireApiKey, handleHeartbeat);
+app.all('/api/heartbeat', requireApiKey, handleHeartbeat);
 
 // Dashboard status — protected by JWT
 app.get('/api/status', requireJWT, (_, res) => {
