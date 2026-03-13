@@ -79,7 +79,7 @@ function markOnline() {
     sendTelegram(msg);
     addLog('online', `PC came back online after ${downtimeStr} downtime.`);
     console.log('[Sentinel] PC marked ONLINE');
-  } else if (state.status === 'offline') {
+  } else if (state.status !== 'online') {
     // First ever heartbeat
     state.status = 'online';
     state.uptimeSince = new Date().toISOString();
@@ -123,6 +123,7 @@ function requireApiKey(req, res, next) {
 
 // Health check (public)
 app.get('/health', (_, res) => res.json({ ok: true, version: '1.0.0' }));
+app.get('/api/health', (_, res) => res.json({ ok: true, version: '1.0.0' }));
 
 // Dashboard login
 app.post('/api/auth/login', (req, res) => {
@@ -138,7 +139,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Heartbeat — called by PowerShell script on the monitored PC
-app.post('/heartbeat', requireApiKey, (req, res) => {
+function handleHeartbeat(req, res) {
   const now = new Date().toISOString();
   state.lastSeen = now;
   state.lastChecked = now;
@@ -149,7 +150,10 @@ app.post('/heartbeat', requireApiKey, (req, res) => {
   scheduleOfflineCheck();
 
   res.json({ ok: true, timestamp: now, threshold: OFFLINE_THRESHOLD / 1000 });
-});
+}
+
+app.post('/heartbeat', requireApiKey, handleHeartbeat);
+app.post('/api/heartbeat', requireApiKey, handleHeartbeat);
 
 // Dashboard status — protected by JWT
 app.get('/api/status', requireJWT, (_, res) => {
