@@ -1,0 +1,14 @@
+{
+  "name": "pc-sentinel-backend-root",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm --workspace backend start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
