@@ -10,7 +10,7 @@ yarn-error.log*
 
 # Env files
 .env
-.env.*
+
 
 # OS/editor
 .DS_Store
