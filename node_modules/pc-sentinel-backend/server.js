@@ -132,23 +132,35 @@ function requireJWT(req, res, next) {
 function requireApiKey(req, res, next) {
   const expectedKey = process.env.HEARTBEAT_API_KEY;
   const auth = req.headers.authorization;
-  const bearer = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  const key =
+  const bearer = auth && auth.startsWith('Bearer ') ? auth.slice(7) : auth;
+
+  const normalizeKey = (value) => {
+    if (value === undefined || value === null) return null;
+    return String(value).trim().replace(/^"|"$/g, '');
+  };
+
+  const providedKey = normalizeKey(
     req.headers['x-api-key'] ||
     req.headers['api-key'] ||
+    req.headers['x-heartbeat-key'] ||
     bearer ||
     req.query.apiKey ||
+    req.query.api_key ||
     req.query.key ||
     req.query.token ||
     req.body?.apiKey ||
+    req.body?.api_key ||
     req.body?.key ||
-    req.body?.token;
+    req.body?.token
+  );
+
+  const normalizedExpected = normalizeKey(expectedKey);
 
   if (!expectedKey) {
     return res.status(500).json({ error: 'Server misconfigured: HEARTBEAT_API_KEY is missing' });
   }
 
-  if (String(key) !== String(expectedKey)) {
+  if (providedKey !== normalizedExpected) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   next();
