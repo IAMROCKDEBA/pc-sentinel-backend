@@ -9,8 +9,24 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ─── Telegram Bot Setup ───────────────────────────────────────────────────────
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const HAS_TELEGRAM_TOKEN = Boolean(TELEGRAM_BOT_TOKEN);
+const HAS_TELEGRAM_CHAT_ID = Boolean(CHAT_ID);
+const HAS_JWT_SECRET = Boolean(process.env.JWT_SECRET);
+const HAS_HEARTBEAT_API_KEY = Boolean(process.env.HEARTBEAT_API_KEY);
+
+if (!TELEGRAM_BOT_TOKEN || !CHAT_ID) {
+  throw new Error('Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID. Telegram alerts are required.');
+}
+
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+bot.on('polling_error', (err) => {
+  console.error('[Telegram] Polling error:', err.message);
+});
+bot.on('error', (err) => {
+  console.error('[Telegram] Bot error:', err.message);
+});
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let state = {
@@ -204,5 +220,11 @@ app.listen(PORT, () => {
   console.log(`\n🛡  PC Sentinel backend running on port ${PORT}`);
   console.log(`   Offline threshold: ${OFFLINE_THRESHOLD / 1000}s`);
   console.log(`   Telegram bot: active\n`);
+  console.log('[Startup] Config sanity (redacted):');
+  console.log(`  - PORT set: ${Boolean(process.env.PORT)}`);
+  console.log(`  - JWT_SECRET present: ${HAS_JWT_SECRET}`);
+  console.log(`  - HEARTBEAT_API_KEY present: ${HAS_HEARTBEAT_API_KEY}`);
+  console.log(`  - TELEGRAM_BOT_TOKEN present: ${HAS_TELEGRAM_TOKEN}`);
+  console.log(`  - TELEGRAM_CHAT_ID present: ${HAS_TELEGRAM_CHAT_ID}`);
   addLog('system', 'PC Sentinel server started.');
 });
